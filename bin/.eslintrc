@@ -1,8 +1,7 @@
 {
   "env": {
     "node": true,
-    // Can't enable this until we upgrade node.
-    "es6": false
+    "es6": true
   },
   "rules": {
     "no-extra-parens": [2, "functions"],

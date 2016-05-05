@@ -52,7 +52,7 @@ XPI_NAME := loop@mozilla.org.xpi
 XPI_FILE := $(BUILT)/$(XPI_NAME)
 
 VENV := $(BUILT)/.venv
-BABEL := $(NODE_LOCAL_BIN)/babel
+BABEL := $(NODE_LOCAL_BIN)/babel --retain-lines
 ESLINT := $(NODE_LOCAL_BIN)/eslint
 FLAKE8 := $(NODE_LOCAL_BIN)/flake8
 
@@ -243,12 +243,24 @@ $(BUILT)/add-on/install.rdf: add-on/install.rdf.in \
 # optimize this away.  We used the shared_jsx_temporary to make this code more
 # readable.
 shared_jsx_files=$(wildcard shared/js/*.jsx)
-built_ui_shared_js_files=$(shared_jsx_files:%.jsx=$(BUILT)/ui/%.js)
-built_add_on_shared_js_files=$(shared_jsx_files:%.jsx=$(BUILT)/add-on/chrome/content/%.js)
-built_standalone_shared_js_files=$(shared_jsx_files:%.jsx=$(BUILT)/standalone/content/%.js)
+shared_js_files=$(wildcard shared/js/*.js)
+shared_test_files=$(wildcard shared/test/*.js)
+built_ui_shared_js_files=$(shared_jsx_files:%.jsx=$(BUILT)/ui/%.js) $(shared_js_files:%.js=$(BUILT)/ui/%.js) $(shared_test_files:%.js=$(BUILT)/ui/%.js)
+built_add_on_shared_js_files=$(shared_jsx_files:%.jsx=$(BUILT)/add-on/chrome/content/%.js) $(shared_js_files:%.js=$(BUILT)/add-on/chrome/content/%.js) $(shared_test_files:%.js=$(BUILT)/add-on/chrome/content/%.js)
+built_standalone_shared_js_files=$(shared_jsx_files:%.jsx=$(BUILT)/standalone/content/%.js) $(shared_js_files:%.js=$(BUILT)/standalone/content/%.js) $(shared_test_files:%.js=$(BUILT)/standalone/content/%.js)
 
 # We can't use $(shared_jsx_files) here because % rules don't accept that.
 $(BUILT)/standalone/content/shared/js/%.js: shared/js/%.jsx
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+# We can't use $(shared_jsx_files) here because % rules don't accept that.
+$(BUILT)/standalone/content/shared/js/%.js: shared/js/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+# We can't use $(shared_jsx_files) here because % rules don't accept that.
+$(BUILT)/standalone/content/shared/test/%.js: shared/test/%.js
 	@mkdir -p $(@D)
 	$(BABEL) $< --out-file $@
 
@@ -258,7 +270,27 @@ $(BUILT)/add-on/chrome/content/shared/js/%.js: shared/js/%.jsx
 	$(BABEL) $< --out-file $@
 
 # We can't use $(shared_jsx_files) here because % rules don't accept that.
+$(BUILT)/add-on/chrome/content/shared/js/%.js: shared/js/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+# We can't use $(shared_jsx_files) here because % rules don't accept that.
+$(BUILT)/add-on/chrome/content/shared/test/%.js: shared/test/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+# We can't use $(shared_jsx_files) here because % rules don't accept that.
 $(BUILT)/ui/shared/js/%.js: shared/js/%.jsx
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+# We can't use $(shared_jsx_files) here because % rules don't accept that.
+$(BUILT)/ui/shared/js/%.js: shared/js/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+# We can't use $(shared_jsx_files) here because % rules don't accept that.
+$(BUILT)/ui/shared/test/%.js: shared/test/%.js
 	@mkdir -p $(@D)
 	$(BABEL) $< --out-file $@
 
@@ -268,17 +300,41 @@ $(BUILT)/ui/shared/js/%.js: shared/js/%.jsx
 
 # ui-showcase
 ui_jsx_files=$(wildcard ui/*.jsx)
-built_ui_js_files=$(ui_jsx_files:%.jsx=$(BUILT)/%.js)
+ui_js_files=$(wildcard ui/*.js)
+built_ui_js_files=$(ui_jsx_files:%.jsx=$(BUILT)/%.js) $(ui_js_files:%.js=$(BUILT)/%.js)
 
 $(BUILT)/ui/%.js: ui/%.jsx
 	@mkdir -p $(@D)
 	$(BABEL) $< --out-file $@
 
+$(BUILT)/ui/%.js: ui/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
 # standalone
 standalone_jsx_files=$(wildcard standalone/content/js/*.jsx)
-built_standalone_js_files=$(standalone_jsx_files:%.jsx=$(BUILT)/%.js)
+standalone_js_files=$(wildcard standalone/content/js/*.js)
+standalone_test_files=$(wildcard standalone/test/*.js)
+standalone_misc_files=$(wildcard standalone/*.js) $(wildcard standalone/content/*.js)
+built_standalone_js_files=$(standalone_jsx_files:%.jsx=$(BUILT)/%.js) $(standalone_js_files:%.js=$(BUILT)/%.js) $(standalone_test_files:%.js=$(BUILT)/%.js) $(standalone_misc_files:%.js=$(BUILT)/%.js)
 
 $(BUILT)/standalone/content/js/%.js: standalone/content/js/%.jsx
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/standalone/content/js/%.js: standalone/content/js/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/standalone/test/%.js: standalone/test/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/standalone/%.js: standalone/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/standalone/content/%.js: standalone/content/%.js
 	@mkdir -p $(@D)
 	$(BABEL) $< --out-file $@
 
@@ -293,20 +349,55 @@ $(BUILT)/standalone/content/l10n/%/loop.properties: locale/%/standalone.properti
 
 # add-on
 add_on_jsx_files=$(wildcard add-on/panels/js/*.jsx)
+add_on_js_files=$(wildcard add-on/panels/js/*.js)
+add_on_test_files=$(wildcard add-on/panels/test/*.js)
+add_on_module_jsm_files=$(wildcard add-on/chrome/modules/*.jsm)
+add_on_module_js_files=$(wildcard add-on/chrome/modules/*.js)
 built_add_on_js_files=$(patsubst add-on/panels/js/%.jsx, \
 	 $(BUILT)/add-on/chrome/content/panels/js/%.js, \
-	 $(add_on_jsx_files))
+	 $(add_on_jsx_files)) $(patsubst add-on/panels/js/%.js, \
+ 	 $(BUILT)/add-on/chrome/content/panels/js/%.js, \
+ 	 $(add_on_js_files)) $(patsubst add-on/panels/test/%.js, \
+ 	 $(BUILT)/add-on/chrome/content/panels/test/%.js, \
+ 	 $(add_on_test_files)) $(patsubst add-on/chrome/modules/%.jsm, \
+ 	 $(BUILT)/add-on/chrome/content/modules/%.jsm, \
+ 	 $(add_on_module_jsm_files)) $(patsubst add-on/chrome/modules/%.js, \
+ 	 $(BUILT)/add-on/chrome/content/modules/%.js, \
+ 	 $(add_on_module_js_files))
 
 $(BUILT)/add-on/chrome/content/panels/js/%.js: add-on/panels/js/%.jsx
 	@mkdir -p $(@D)
 	$(BABEL) $< --out-file $@
 
+$(BUILT)/add-on/chrome/content/panels/js/%.js: add-on/panels/js/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/add-on/chrome/content/panels/test/%.js: add-on/panels/test/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/add-on/chrome/content/modules/%.jsm: add-on/chrome/modules/%.jsm
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/add-on/chrome/content/modules/%.js: add-on/chrome/modules/%.js
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
 add_on_vendor_jsx_files=$(wildcard add-on/panels/vendor/*.jsx)
+add_on_vendor_js_files=$(wildcard add-on/panels/vendor/*.js)
 built_add_on_vendor_js_files=$(patsubst add-on/panels/vendor/%.jsx, \
 	 $(BUILT)/add-on/chrome/content/panels/vendor/%.js, \
-	 $(add_on_vendor_jsx_files))
+	 $(add_on_vendor_jsx_files)) $(patsubst add-on/panels/vendor/%.js, \
+	 	 $(BUILT)/add-on/chrome/content/panels/vendor/%.js, \
+	 	 $(add_on_vendor_js_files))
 
 $(BUILT)/add-on/chrome/content/panels/vendor/%.js: add-on/panels/vendor/%.jsx
+	@mkdir -p $(@D)
+	$(BABEL) $< --out-file $@
+
+$(BUILT)/add-on/chrome/content/panels/vendor/%.js: add-on/panels/vendor/%.js
 	@mkdir -p $(@D)
 	$(BABEL) $< --out-file $@
 
@@ -325,9 +416,10 @@ $(BUILT)/add-on/chrome/locale/%/loop.properties: locale/%/add-on.properties loca
 .PHONY: ui
 ui: node_modules $(built_ui_js_files) $(built_ui_shared_js_files) vendor_libs
 	mkdir -p $(BUILT)/$@
-	$(RSYNC) $@ $(BUILT)
+	$(RSYNC) --exclude='*.js' $@ $(BUILT)
 	mkdir -p $(BUILT)/$@/shared
-	$(RSYNC) shared $(BUILT)/$@
+	$(RSYNC) --exclude='*.js' shared $(BUILT)/$@
+	$(RSYNC) shared/vendor $(BUILT)/$@/shared
 
 .PHONY: standalone
 standalone: node_modules \
@@ -338,9 +430,11 @@ standalone: node_modules \
             $(built_standalone_shared_js_files) \
             $(built_standalone_l10n_files)
 	mkdir -p $(BUILT)/$@
-	$(RSYNC) $@ $(BUILT)
+	$(RSYNC) --exclude='*.js' $@ $(BUILT)
+	$(RSYNC) $@/content/vendor $(BUILT)/$@/content
 	mkdir -p $(BUILT)/$@/content/shared
-	$(RSYNC) shared $(BUILT)/$@/content
+	$(RSYNC) --exclude='*.js' shared $(BUILT)/$@/content
+	$(RSYNC) shared/vendor $(BUILT)/$@/content/shared
 
 .PHONY: add-on
 add-on: node_modules \
@@ -352,22 +446,25 @@ add-on: node_modules \
 	      $(BUILT)/$(ADD-ON)/chrome.manifest \
 	      $(BUILT)/$(ADD-ON)/chrome/locale/chrome.manifest \
 	      $(BUILT)/$(ADD-ON)/install.rdf \
-	      $(BUILT)/add-on/chrome/content/preferences/prefs.js
+	      $(BUILT)/add-on/chrome/content/preferences/prefs.js \
+				$(BUILT)/add-on/bootstrap.js
 	mkdir -p $(BUILT)/$@
-	$(RSYNC) $@/chrome/bootstrap.js $(BUILT)/$@
 	mkdir -p $(BUILT)/$@/chrome/content/panels
-	$(RSYNC) $@/panels $(BUILT)/$@/chrome/content
-	mkdir -p $(BUILT)/$@/chrome/content/modules
-	$(RSYNC) $@/chrome/modules $(BUILT)/$@/chrome/content
+	$(RSYNC) --exclude='*.js' $@/panels $(BUILT)/$@/chrome/content
+	$(RSYNC) $@/panels/vendor $(BUILT)/$@/chrome/content/panels
 	mkdir -p $(BUILT)/$@/chrome/test
 	$(RSYNC) $@/chrome/test $(BUILT)/$@/chrome
 	mkdir -p $(BUILT)/$@/chrome/content/shared
-	$(RSYNC) shared $(BUILT)/$@/chrome/content
+	$(RSYNC) --exclude='*.js' shared $(BUILT)/$@/chrome/content
+	$(RSYNC) shared/vendor $(BUILT)/$@/chrome/content/shared
 	$(RSYNC) $@/chrome/skin $(BUILT)/$@/chrome/
 
 $(BUILT)/$(ADD-ON)/chrome.manifest: $(ADD-ON)/jar.mn
 	@mkdir -p $(@D)
 	python bin/generateChromeManifest.py --input-file=$^ --output-file=$@
+
+$(BUILT)/$(ADD-ON)/bootstrap.js: $(ADD-ON)/chrome/bootstrap.js
+	$(BABEL) $< --out-file $@
 
 shared_l10n_files=$(wildcard locale/*/shared.properties)
 $(BUILT)/$(ADD-ON)/chrome/locale/chrome.manifest: $(add_on_l10n_files) $(shared_l10n_files)
