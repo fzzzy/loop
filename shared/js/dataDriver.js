@@ -75,6 +75,8 @@ loop.DataDriver = function() {
         throw new Error("Missing option dispatcher");
       }
 
+      this._retryTimeout = this.INITIAL_RETRY_TIMEOUT;
+
       this._dispatcher = options.dispatcher;
       this._dispatcher.register(this, [
         "fetchServerData",
@@ -149,6 +151,12 @@ loop.DataDriver = function() {
             console.log(`Error handling EventSource.put: ${event.data}`, ex);
           }
           break;
+        case "error":
+          setTimeout(
+            this._connectToRoom.bind(this, this._roomToken),
+            this._retryTimeout);
+          this._retryTimeout *= 2;
+          break;
       }
     }
 
@@ -169,6 +177,13 @@ loop.DataDriver = function() {
      */
     get MAX_LIMIT() {
       return 2147483647;
+    }
+
+    /**
+     * Get the initial retry delay, in ms.
+     */
+    get INITIAL_RETRY_TIMEOUT() {
+      return 2000;
     }
 
     /**
@@ -277,6 +292,7 @@ loop.DataDriver = function() {
      * @param {String} token The room token to use for connections.
      */
     _connectToRoom(token) {
+      this._retryTimeout = this.INITIAL_RETRY_TIMEOUT;
       this._roomToken = token;
       this._sse = new EventSource(this._buildUrl() + "?" + this._buildQuery({
         limitToLast: 1,
@@ -284,6 +300,7 @@ loop.DataDriver = function() {
       }));
       this._sse.addEventListener("open", this);
       this._sse.addEventListener("put", this);
+      this._sse.addEventListener("error", this);
 
       // Determine the clock skew before continuing initialization.
       this.update("meta", "lastConnect").then(({ timestamp }) => {
